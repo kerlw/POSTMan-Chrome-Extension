@@ -1,5 +1,8 @@
 pm.request = {
     url:"",
+    m9url:"http://10.4.250.33:11999/m9",
+    m9fm_src:"cleartext",
+    m9fm_dest:"ciphertext",
     urlParams:{},
     name:"",
     description:"",
@@ -677,6 +680,10 @@ pm.request = {
 
         $("#submit-request").on("click", function () {
             pm.request.send("text");
+        });
+
+        $("#submit-request-m9").on("click", function () {
+            pm.request.send("text", "m9");
         });
 
         $("#preview-request").on("click", function () {
@@ -1993,7 +2000,7 @@ pm.request = {
     },
 
     //Send the current request
-    send:function (responseRawDataType) {
+    send:function (responseRawDataType, action) {
         pm.request.prepareForSending();
         if (pm.request.url === "") {
             return;
@@ -2006,6 +2013,44 @@ pm.request = {
 
         //Start setting up XHR
         var xhr = new XMLHttpRequest();
+
+	    if (action == "m9") {
+            xhr.open("POST", pm.request.m9url, true);
+            var body = pm.request.getRequestBodyToBeSent();
+            if (body == false)
+                return;
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var xhr2 = new XMLHttpRequest();
+                    xhr2.open(method, url, true);
+                    xhr2.onreadystatechange = function () {
+                        if (xhr2.readyState == 4 && xhr2.status == 200) {
+                            var xhr3 = new XMLHttpRequest();
+                            xhr3.open("POST", pm.request.m9url, true);
+                            xhr3.onreadystatechange = function (event) {
+                                pm.request.response.load(event.target);
+                            }
+
+				var sendBody2 = new FormData();
+                            sendBody2.append(pm.request.m9fm_src, "");
+                            sendBody2.append(pm.request.m9fm_dest, xhr2.responseText);
+                            xhr3.send(sendBody2);
+                        }
+                    }
+
+                    xhr2.send(xhr.responseText);
+                }
+            }
+
+            var sendBody = new FormData();
+            sendBody.append(pm.request.m9fm_src, body);
+            sendBody.append(pm.request.m9fm_dest, "");
+            xhr.responseType = "text";
+            xhr.send(sendBody);
+            return;
+    	}
+
         xhr.open(method, url, true); //Open the XHR request. Will be sent later
         xhr.onreadystatechange = function (event) {
             pm.request.response.load(event.target);
